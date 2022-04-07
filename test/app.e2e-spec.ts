@@ -1,15 +1,16 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as pactum from 'pactum';
 import { Test } from '@nestjs/testing';
-import { PrismaService } from '../src/prisma/prisma.service';
+import * as pactum from 'pactum';
 import { AppModule } from '../src/app.module';
 import { AuthDto } from '../src/auth/dto';
-import { EditUserDto } from '../src/user/dto';
 import { CreateBookmarkDto, EditBookmarkDto } from '../src/bookmark/dto';
+import { PrismaService } from '../src/prisma/prisma.service';
+import { EditUserDto } from '../src/user/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -21,12 +22,12 @@ describe('App e2e', () => {
         whitelist: true,
       }),
     );
-
     await app.init();
     await app.listen(3333);
 
     prisma = app.get(PrismaService);
-    await prisma.clearDb();
+    await prisma.cleanDb();
+    pactum.request.setBaseUrl('http://localhost:3333');
   });
 
   afterAll(() => {
@@ -34,96 +35,82 @@ describe('App e2e', () => {
   });
 
   describe('Auth', () => {
+    const dto: AuthDto = {
+      email: 'test@gmail.com',
+      password: '123',
+    };
     describe('Signup', () => {
       it('should throw if email empty', () => {
         return pactum
           .spec()
-          .post('http://localhost:3333/auth/signup')
+          .post('/auth/signup')
           .withBody({
-            email: '',
+            password: dto.password,
           })
           .expectStatus(400);
       });
       it('should throw if password empty', () => {
         return pactum
           .spec()
-          .post('http://localhost:3333/auth/signup')
+          .post('/auth/signup')
           .withBody({
-            email: 'test@example.com',
-            password: '',
+            email: dto.email,
           })
           .expectStatus(400);
       });
-      it('should throw if body empty', () => {
-        return pactum
-          .spec()
-          .post('http://localhost:3333/auth/signup')
-          .expectStatus(400);
+      it('should throw if no body provided', () => {
+        return pactum.spec().post('/auth/signup').expectStatus(400);
       });
       it('should signup', () => {
-        const dto: AuthDto = {
-          email: 'test@example.com',
-          password: '123',
-        };
-
-        pactum
+        return pactum
           .spec()
-          .post('http://localhost:3333/auth/signup')
+          .post('/auth/signup')
           .withBody(dto)
-          .expectStatus(201)
-          .inspect();
+          .expectStatus(201);
       });
     });
+
     describe('Signin', () => {
       it('should throw if email empty', () => {
         return pactum
           .spec()
-          .post('http://localhost:3333/auth/signin')
+          .post('/auth/signin')
           .withBody({
-            email: '',
+            password: dto.password,
           })
           .expectStatus(400);
       });
       it('should throw if password empty', () => {
         return pactum
           .spec()
-          .post('http://localhost:3333/auth/signin')
+          .post('/auth/signin')
           .withBody({
-            email: 'test@example.com',
-            password: '',
+            email: dto.email,
           })
           .expectStatus(400);
       });
-      it('should throw if body empty', () => {
-        return pactum
-          .spec()
-          .post('http://localhost:3333/auth/signin')
-          .expectStatus(400);
+      it('should throw if no body provided', () => {
+        return pactum.spec().post('/auth/signin').expectStatus(400);
       });
       it('should signin', () => {
-        const dto: AuthDto = {
-          email: 'test@example.com',
-          password: '123',
-        };
-
-        pactum
+        return pactum
           .spec()
-          .post('http://localhost:3333/auth/signin')
+          .post('/auth/signin')
           .withBody(dto)
           .expectStatus(200)
-          .stores('token', 'access_token');
+          .stores('userAt', 'access_token');
       });
     });
   });
+
   describe('User', () => {
     describe('Get me', () => {
       it('should get current user', () => {
         return pactum
           .spec()
-          .get('http://localhost:3333/users/me')
+          .get('/users/me')
           .withHeaders({
-            Authorization: 'Bearer $S{token}',
-            Accept: 'application/json',
+            Authorization: 'Bearer $S{userAt}',
           })
           .expectStatus(200);
       });
@@ -137,9 +124,9 @@ describe('App e2e', () => {
         };
         return pactum
           .spec()
-          .patch('http://localhost:3333/users')
+          .patch('/users')
           .withHeaders({
-            Authorization: 'Bearer $S{token}',
+            Authorization: 'Bearer $S{userAt}',
           })
           .withBody(dto)
           .expectStatus(200)
@@ -156,7 +143,7 @@ describe('App e2e', () => {
           .spec()
           .get('/bookmarks')
           .withHeaders({
-            Authorization: 'Bearer $S{token}',
+            Authorization: 'Bearer $S{userAt}',
           })
           .expectStatus(200)
           .expectBody([]);
@@ -173,7 +160,7 @@ describe('App e2e', () => {
           .spec()
           .post('/bookmarks')
           .withHeaders({
-            Authorization: 'Bearer $S{token}',
+            Authorization: 'Bearer $S{userAt}',
           })
           .withBody(dto)
           .expectStatus(201)
@@ -187,7 +174,7 @@ describe('App e2e', () => {
           .spec()
           .get('/bookmarks')
           .withHeaders({
-            Authorization: 'Bearer $S{token}',
+            Authorization: 'Bearer $S{userAt}',
           })
           .expectStatus(200)
           .expectJsonLength(1);
@@ -201,7 +188,7 @@ describe('App e2e', () => {
           .get('/bookmarks/{id}')
           .withPathParams('id', '$S{bookmarkId}')
           .withHeaders({
-            Authorization: 'Bearer $S{token}',
+            Authorization: 'Bearer $S{userAt}',
           })
           .expectStatus(200)
           .expectBodyContains('$S{bookmarkId}');
@@ -221,7 +208,7 @@ describe('App e2e', () => {
           .patch('/bookmarks/{id}')
           .withPathParams('id', '$S{bookmarkId}')
           .withHeaders({
-            Authorization: 'Bearer $S{token}',
+            Authorization: 'Bearer $S{userAt}',
           })
           .withBody(dto)
           .expectStatus(200)
@@ -237,7 +224,7 @@ describe('App e2e', () => {
           .delete('/bookmarks/{id}')
           .withPathParams('id', '$S{bookmarkId}')
           .withHeaders({
-            Authorization: 'Bearer $S{token}',
+            Authorization: 'Bearer $S{userAt}',
           })
           .expectStatus(204);
       });
@@ -247,7 +234,7 @@ describe('App e2e', () => {
           .spec()
           .get('/bookmarks')
           .withHeaders({
-            Authorization: 'Bearer $S{token}',
+            Authorization: 'Bearer $S{userAt}',
           })
           .expectStatus(200)
           .expectJsonLength(0);
