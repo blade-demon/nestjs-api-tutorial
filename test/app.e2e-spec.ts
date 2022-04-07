@@ -139,7 +139,7 @@ describe('App e2e', () => {
           .spec()
           .patch('http://localhost:3333/users')
           .withHeaders({
-            Authorization: 'Bearer $S{userAt}',
+            Authorization: 'Bearer $S{token}',
           })
           .withBody(dto)
           .expectStatus(200)
@@ -156,7 +156,7 @@ describe('App e2e', () => {
           .spec()
           .get('/bookmarks')
           .withHeaders({
-            Authorization: 'Bearer $S{userAt}',
+            Authorization: 'Bearer $S{token}',
           })
           .expectStatus(200)
           .expectBody([]);
@@ -221,7 +221,7 @@ describe('App e2e', () => {
           .patch('/bookmarks/{id}')
           .withPathParams('id', '$S{bookmarkId}')
           .withHeaders({
-            Authorization: 'Bearer $S{userAt}',
+            Authorization: 'Bearer $S{token}',
           })
           .withBody(dto)
           .expectStatus(200)
